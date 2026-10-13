@@ -16,7 +16,6 @@ type AugmentationData = {
 
 /**
  * Handles sending conversation turns to the augmentation pipeline after each LLM response.
- *
  * Routes to the local Rust engine when a storage connection is present (BYODB mode),
  * otherwise fires a request to the Memori Cloud API.
  */

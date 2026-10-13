@@ -11,10 +11,8 @@ import {
 
 /**
  * Abstract base class for Memori framework integrations.
- *
  * Provides common functionality for translating framework-specific data formats
  * (like OpenClaw messages) into Axon's internal LLM request/response format.
- *
  * @internal
  */
 export abstract class BaseIntegration {
