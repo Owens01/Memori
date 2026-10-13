@@ -48,7 +48,6 @@ function sanitizeHistoryMessages(messages: RawHistoryMessage[], dropSystem = fal
 
 /**
  * Retrieves relevant memories and injects them into the LLM system prompt before each call.
- *
  * Operates in two modes: local (BYODB — vector search via the Rust engine) or cloud
  * (API call to Memori's recall endpoint). Also re-hydrates conversation history when
  * available.

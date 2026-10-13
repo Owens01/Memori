@@ -8,7 +8,6 @@ import { WriteBatch } from 'src/types/storage.js';
 
 /**
  * Saves conversation messages to the Memori Cloud after each LLM response.
- *
  * Skipped entirely when a local storage connection is present — in BYODB mode
  * the Rust augmentation pipeline writes conversation history directly to the database.
  */
