@@ -1,0 +1,114 @@
+r"""
+ __  __                           _
+|  \/  | ___ _ __ ___   ___  _ __(_)
+| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
+| |  | |  __/ | | | | | (_) | |  | |
+|_|  |_|\___|_| |_| |_|\___/|_|  |_|
+                 perfectam memoriam
+                      memorilabs.ai
+"""
+
+import logging
+import time
+
+from memori._config import Config
+
+try:
+    from sqlalchemy.exc import OperationalError
+
+    _RETRYABLE_DB_ERRORS: tuple[type[Exception], ...] = (OperationalError,)
+except ImportError:
+    _RETRYABLE_DB_ERRORS = ()
+
+logger = logging.getLogger(__name__)
+
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 0.1
+
+
+class Writer:
+    def __init__(self, config: Config):
+        self.config = config
+
+    def execute(self, payload: dict, max_retries: int = MAX_RETRIES) -> "Writer":
+        if self.config.storage is None or self.config.storage.driver is None:
+            logger.debug("Writer.execute skipped - storage not configured")
+            return self
+
+        logger.debug("Writing response to memori DB")
+
+        for attempt in range(max_retries):
+            try:
+                self._execute_transaction(payload)
+                return self
+            except _RETRYABLE_DB_ERRORS as e:
+                if "restart transaction" in str(e) and attempt < max_retries - 1:
+                    logger.debug(
+                        "Writer retry attempt %d due to OperationalError", attempt + 1
+                    )
+                    if self.config.storage.adapter:
+                        self.config.storage.adapter.rollback()
+                    time.sleep(RETRY_BACKOFF_BASE * (2**attempt))
+                    continue
+                raise
+        return self
+
+    def _ensure_cached_id(self, cache_attr: str, create_func, *create_args) -> int:
+        """Ensure an ID is cached, creating it if necessary."""
+        cached_id = getattr(self.config.cache, cache_attr)
+        if cached_id is None:
+            cached_id = create_func(*create_args)
+            if cached_id is None:
+                raise RuntimeError(f"{cache_attr} is unexpectedly None")
+            setattr(self.config.cache, cache_attr, cached_id)
+        return cached_id
+
+    def _execute_transaction(self, payload: dict) -> None:
+        if self.config.entity_id is not None:
+            self._ensure_cached_id(
+                "entity_id",
+                self.config.storage.driver.entity.create,
+                self.config.entity_id,
+            )
+
+        if self.config.process_id is not None:
+            self._ensure_cached_id(
+                "process_id",
+                self.config.storage.driver.process.create,
+                self.config.process_id,
+            )
+
+        self._ensure_cached_id(
+            "session_id",
+            self.config.storage.driver.session.create,
+            self.config.session_id,
+            self.config.cache.entity_id,
+            self.config.cache.process_id,
+        )
+
+        # Ensure conversation_id exists - may have been set earlier in
+        # inject_conversation_messages. If not, create/get it now.
+        # conversation.create is idempotent and returns existing conversation
+        # if within timeout, so it's safe to call multiple times.
+        self._ensure_cached_id(
+            "conversation_id",
+            self.config.storage.driver.conversation.create,
+            self.config.cache.session_id,
+            self.config.session_timeout_minutes,
+        )
+
+        for message in payload.get("messages", []):
+            self.config.storage.driver.conversation.message.create(
+                self.config.cache.conversation_id,
+                message["role"],
+                message["type"],
+                message["text"],
+            )
+
+        if self.config.storage is not None and self.config.storage.adapter is not None:
+            self.config.storage.adapter.flush()
+            self.config.storage.adapter.commit()
+            logger.debug(
+                "Transaction committed - conversation_id: %s",
+                self.config.cache.conversation_id,
+            )

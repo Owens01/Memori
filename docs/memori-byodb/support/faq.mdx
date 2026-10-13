@@ -1,0 +1,76 @@
+---
+title: FAQ
+description: Frequently asked questions about Memori open source.
+---
+
+# FAQ
+
+<Note>
+  Want a zero-setup option? Try Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+### What is Memori?
+
+Memori is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+
+### Memori Cloud vs Memori BYODB?
+
+**Memori Cloud** — managed storage, dashboard UI, just add an API key. **Memori BYODB** — bring your own database, full control. Both use the same SDK (Python and TypeScript).
+
+### Which databases are supported?
+
+**Python:** CockroachDB, MariaDB, MongoDB, MySQL, OceanBase, Oracle, PostgreSQL, SQLite, and TiDB. Managed providers like Neon, Supabase, and AWS RDS/Aurora are supported through compatible PostgreSQL/MySQL engines.
+
+**TypeScript:** SQLite, PostgreSQL, and MySQL. AWS RDS/Aurora, CockroachDB, MariaDB, Neon, Supabase, and TiDB work through compatible PostgreSQL/MySQL drivers.
+
+See the [Database guides](/docs/memori-byodb/databases/overview).
+
+### Do I need SQLAlchemy to use BYODB?
+
+No, SQLAlchemy is one option for Python but not a requirement. Memori also supports direct DB-API 2.0 connection factories, Django ORM integration, and MongoDB database callables. In TypeScript, pass a factory function that returns the connection — `better-sqlite3`, `pg` Pool, or `mysql2` Pool.
+
+### Which LLM providers and frameworks work?
+
+**Python:** OpenAI, Anthropic, Google Gemini, Agno, AWS Bedrock, DeepSeek, LangChain, Nebius AI Studio, Pydantic AI, and xAI Grok. All support sync, async, and streaming.
+
+**TypeScript:** OpenAI, Anthropic, and Google Gemini.
+
+See the [LLM guides](/docs/memori-byodb/llm/overview).
+
+### Do I need a Memori API key?
+
+No, the open-source version works without one. An API key only unlocks higher Advanced Augmentation quotas (5,000/month with a free key).
+
+### Do I need to manage infrastructure?
+
+Yes, you run your own database. For the simplest setup, use SQLite (single file, no server). For production, PostgreSQL is recommended.
+
+### Does it support async?
+
+Yes, all providers support async mode out of the box. We recommend using your provider's async client.
+
+### How does augmentation work?
+
+It runs in the background after each conversation and extracts facts, preferences, and relationships while minimizing impact on your LLM response path. See [Advanced Augmentation](/docs/memori-byodb/concepts/advanced-augmentation).
+
+### Can I use multiple LLM providers?
+
+Yes, you can register multiple clients on the same Memori instance. Memories are shared across providers since they're linked to entities, not providers.
+
+### Can I migrate between Memori Cloud and BYODB?
+
+Yes, both use the same SDK.<br />
+In Python, swap `conn=SessionLocal` for `api_key="..."`.<br />
+In TypeScript, remove the `conn` option and set `MEMORI_API_KEY`.<br />
+Existing local memories don't auto-transfer.
+
+### What is `augmentation.wait()`?
+
+It blocks until background augmentation finishes. Only needed in short-lived scripts that might exit before processing completes.
+
+### Still have questions?
+
+- [Troubleshooting](/docs/memori-byodb/support/troubleshooting) guide
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)

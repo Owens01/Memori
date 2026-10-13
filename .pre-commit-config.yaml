@@ -1,0 +1,60 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: debug-statements
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.15.1
+  hooks:
+  - id: ruff-check
+    args: [--fix]
+  - id: ruff-format
+
+#- repo: local
+  #hooks:
+  # - id: ty
+  #   name: ty type checker
+  #   entry: uvx ty check
+  #   language: system
+  #   types: [python]
+  #   pass_filenames: false
+  #   always_run: true
+
+  #- id: pytest
+    #name: pytest
+    #entry: uv run pytest --ignore=tests/benchmarks --ignore=tests/integration
+    #language: system
+    #pass_filenames: false
+    #always_run: true
+
+  #- id: ts-format
+    #name: format (memori-ts)
+    #entry: bash -c 'cd memori-ts && npm run format'
+    #language: system
+    #pass_filenames: false
+    #files: ^memori-ts/
+
+  #- id: ts-lint
+    #name: lint (memori-ts)
+    #entry: bash -c 'cd memori-ts && npm run lint:fix'
+    #language: system
+    #pass_filenames: false
+    #files: ^memori-ts/
+
+  #- id: ts-typecheck
+    #name: typecheck (memori-ts)
+    #entry: bash -c 'cd memori-ts && npm run typecheck'
+    #language: system
+    #pass_filenames: false
+    #files: ^memori-ts/
+
+  #- id: ts-test
+    #name: test (memori-ts)
+    #entry: bash -c 'cd memori-ts && npm run test'
+    #language: system
+    #pass_filenames: false
+    #files: ^memori-ts/

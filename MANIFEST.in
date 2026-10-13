@@ -1,0 +1,64 @@
+# Include essential files
+include README.md
+include LICENSE
+include setup.py
+include pyproject.toml
+
+# Include the Rust core crate so sdist builds can compile the extension
+graft core
+global-exclude core/target
+global-exclude core/**/target
+prune core/target
+
+# Exclude all development and Docker files
+exclude Dockerfile
+exclude docker-compose.yml
+exclude .dockerignore
+exclude Makefile
+exclude .env.example
+exclude conftest.py
+exclude CONTRIBUTING.md
+exclude .pre-commit-config.yaml
+exclude uv.lock
+exclude google-credentials.json
+exclude .coverage
+exclude coverage.xml
+exclude CHANGELOG.md
+exclude insert_facts.py
+exclude memori.db
+exclude memori_rust_core.db
+exclude memori_test.db
+exclude memori_python.abi3.so
+
+# Exclude test directories
+prune tests
+
+# Exclude documentation build artifacts
+prune docs
+prune htmlcov
+
+# Exclude TypeScript SDK (not shipped to PyPI)
+prune memori-ts
+prune integrations
+
+# Exclude benchmarks (not shipped with the SDK)
+prune benchmarks
+prune .benchmarks
+
+# Exclude version control and CI
+prune .git
+prune .github
+exclude .gitignore
+
+# Exclude IDE and editor files
+prune .vscode
+prune .venv
+prune .venv-size-check
+prune .pytest_cache
+prune .ruff_cache
+prune .uv-cache
+prune .fastembed_cache
+global-exclude .DS_Store
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__

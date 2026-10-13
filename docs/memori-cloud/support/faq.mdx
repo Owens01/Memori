@@ -1,0 +1,65 @@
+---
+title: FAQ
+description: Frequently asked questions about Memori Cloud.
+---
+
+# FAQ
+
+## What is Memori?
+
+__Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+
+## Which languages are supported?
+
+Memori offers official **Python** and **TypeScript** SDKs, both compatible with Memori Cloud and BYODB. OpenAI, Anthropic, and Google Gemini are supported in both languages, with a broader set of LLM providers and frameworks available in Python.
+
+## Memori Cloud vs Memori BYODB?
+
+**Memori Cloud** — managed storage, dashboard UI, just add an API key.<br />
+**Memori BYODB** — bring your own database & maintain full control.
+
+## Which LLM providers and frameworks are supported?
+
+**Python:** OpenAI, Anthropic, Google Gemini, Agno, AWS Bedrock, DeepSeek, LangChain, Nebius AI Studio, Pydantic AI, and xAI Grok. All support sync, async, and streaming.
+
+**TypeScript:** OpenAI, Anthropic, and Google Gemini. More providers coming soon.
+
+See the [Integration Overview](/docs/memori-cloud/llm/overview).
+
+## Do I need to set up a database?
+
+No, the Memori Cloud platform manages all storage. We recommend initializing with `mem = Memori()`.
+
+## Is there a free tier?
+
+Yes, you can create 5,000 memories and recall 15,000 memories per month with a free API key. Sign up on [app.memorilabs.ai](https://app.memorilabs.ai)
+
+## What counts as a "memory"?
+
+Each fact, preference, or relationship extracted by Advanced Augmentation counts as one memory. A single conversation can generate multiple memories.
+
+## Does it support async?
+
+Yes, in Python, use your provider's async client (e.g. `AsyncOpenAI`).<br />
+TypeScript is natively async — LLM calls and `recall()` return Promises.
+
+## How does augmentation work?
+
+It runs in the background after each conversation and extracts facts, preferences, and relationships while minimizing impact on your LLM response path. See [Advanced Augmentation](/docs/memori-cloud/concepts/advanced-augmentation).
+
+## Can I use multiple LLM providers?
+
+Yes, you can register multiple clients on the same Memori instance. Memories are shared across providers since they're scoped to entities, not to providers.
+
+## Can I migrate between Memori Cloud and Memori BYODB?
+
+Yes, both use the same SDK.<br />
+In Python, remove `conn=SessionLocal` for Memori Cloud or add it for Memori BYODB.<br />
+In TypeScript, remove the `conn` option and set `MEMORI_API_KEY` for Cloud, or pass `conn: () => db` for BYODB.<br />
+Existing memories don't auto-transfer.
+
+## Still have questions?
+
+- [Troubleshooting guide](/docs/memori-cloud/support/troubleshooting)
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)

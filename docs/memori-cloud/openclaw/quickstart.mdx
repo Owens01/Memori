@@ -1,0 +1,142 @@
+---
+title: Quickstart
+description: Install and configure the Memori plugin for OpenClaw in under 5 minutes.
+---
+
+# OpenClaw Quickstart
+
+Get a structured, long-term memory system running in your OpenClaw gateway in three steps.
+
+## Prerequisites
+
+- [OpenClaw](https://openclaw.ai) `v2026.3.2` or later
+- Memori API key — acquire with `memori signup`
+- An Entity ID to scope memory to a specific user, agent, or system
+- A Project ID to scope memory to a specific project or workspace
+
+## 1. Install and Enable
+
+```bash
+# Install the plugin from npm
+openclaw plugins install @memorilabs/openclaw-memori
+
+# Enable it in your workspace
+openclaw plugins enable openclaw-memori
+```
+
+## 2. Configure
+
+You need three values: your Memori API key, an Entity ID, and a Project ID.
+
+### Option A: Via CLI (Recommended)
+
+```bash
+openclaw memori init \
+  --api-key "YOUR_MEMORI_API_KEY" \
+  --entity-id "your-app-user-id" \
+  --project-id "my-project"
+
+# Enable conversation access for OpenClaw versions 2026.5.7+
+openclaw config set plugins.entries.openclaw-memori.hooks.allowConversationAccess true
+```
+
+### Option B: Via `openclaw.json`
+
+Add the following to `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "openclaw-memori": {
+        "enabled": true,
+        "config": {
+          "apiKey": "your-memori-api-key",
+          "entityId": "your-app-user-id",
+          "projectId": "my-project"
+        },
+        "hooks": {
+          "allowConversationAccess": true
+        }
+      }
+    }
+  }
+}
+```
+
+*If installing a version prior to OpenClaw `v2026.5.7`, remove the hooks sections from configuration. Else OpenClaw `v2026.5.7+` follow instructions above.
+
+### Configuration Options
+
+<Properties>
+  <Property name="apiKey" type="string" required>
+    Your Memori API key — acquire with `memori signup`.
+  </Property>
+  <Property name="entityId" type="string" required>
+    A unique identifier for the entity (user, agent, or tenant) to attribute memories to. This scopes memory storage to a specific user, application, or system.
+  </Property>
+  <Property name="projectId" type="string" required>
+    A project or workspace ID used to scope all extracted facts and summaries. This isolates memory within a particular project or workspace boundary.
+  </Property>
+</Properties>
+
+## 3. Verify
+
+After configuring, restart the gateway and verify your API connectivity:
+
+```bash
+openclaw gateway restart
+openclaw memori status --check
+```
+
+You should see:
+
+```
+Memori Plugin Status
+────────────────────────────────────
+  API Key:    ****...A3xQ
+  Entity ID:  your-app-user-id
+  Project ID: my-project
+
+Checking API connectivity... OK
+Status: Ready
+```
+
+### Test the Full Memory Loop
+
+1. Send a message with a durable preference:
+   > "I always use TypeScript and prefer functional patterns."
+
+2. Check the gateway logs to confirm advanced augmentation ran in the background:
+   ```
+   [Memori] Augmentation successful!
+   ```
+
+3. Start a new session (so the agent is a blank slate) and ask:
+   > "Write a hello world script in my preferred language."
+
+4. Confirm the agent used `memori_recall` to fetch your preferences:
+   ```
+   [Memori] memori_recall params: {"projectId":"my-project","query":"preferred programming language"}
+   ```
+
+5. Tell the agent to send feedback:
+   > "Send feedback to the developers that the recall was perfect." (This will trigger the `memori_feedback` tool).
+
+
+## What Happens Under the Hood
+
+The Memori plugin operates on two parallel tracks:
+
+| Track | Mechanism | What it does |
+| --- | --- | --- |
+| **Agent-Controlled Intelligent Recall** | Plugin Tools | Equips the agent with `memori_recall`, `memori_recall_summary`, `memori_compaction`, and `memori_feedback`. The agent retrieves memory explicitly when needed. |
+| **Advanced Augmentation** | `agent_end` Hook | After the agent responds, the exchange and execution trace are sanitized and sent to Memori in the background to structure memory from conversation, tool activity, decisions, and outcomes. |
+
+Together, these systems continuously structure memory from not just natural language, but also from agent trace and execution. Memori captures the agent's actions, tool results, decisions, and outcomes into durable memory the agent can recall on demand — so the next time it performs a task, it is more accurate and efficient.
+
+Memori does not automatically inject memory into the prompt. Instead, agents retrieve only the context they need, improving accuracy and efficiency while avoiding unnecessary token usage.
+
+<Admonition type="tip" title="Multi-Agent Gateways">
+  The plugin is fully stateless and thread-safe. You can run it across multiple agents in the same gateway without any shared state or concurrency issues.
+</Admonition>

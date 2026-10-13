@@ -1,0 +1,322 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and validate artifacts; skip all PyPI uploads and integration tests."
+        type: boolean
+        default: false
+      skip_integration_tests:
+        description: "Skip integration-tests job for manual publishes when a recent run is already green."
+        type: boolean
+        default: false
+      publish_memorisdk:
+        description: "Also publish the memorisdk mirror package. Auto-disabled for GitHub pre-releases."
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integration-tests:
+    if: ${{ inputs.dry_run != true && inputs.skip_integration_tests != true }}
+    uses: ./.github/workflows/integration.yml
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+  build-memori-wheels:
+    needs: integration-tests
+    if: ${{ always() && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') }}
+    name: wheels ${{ matrix.os }} / ${{ matrix.archs }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            archs: x86_64
+          - os: ubuntu-24.04-arm
+            archs: aarch64
+          - os: macos-15-intel
+            archs: x86_64
+          - os: macos-14
+            archs: arm64
+          - os: windows-latest
+            archs: AMD64
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Set up Rust
+        if: runner.os != 'macOS'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Use preinstalled Rust
+        if: runner.os == 'macOS'
+        run: |
+          rustc --version
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        env:
+          # abi3 wheels are forward-compatible across 3.10+, so one build per
+          # (os, arch) covers every supported interpreter.
+          CIBW_BUILD: "cp310-*"
+          CIBW_SKIP: "*-manylinux_i686 *-win32"
+          CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
+          CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
+          # manylinux_2_28 (AlmaLinux 8) and musllinux (Alpine) need build
+          # dependencies for vendored OpenSSL and non-vendored build-script paths.
+          CIBW_BEFORE_ALL_LINUX: >-
+            if command -v dnf >/dev/null 2>&1; then
+              dnf install -y perl-core openssl-devel pkgconf-pkg-config;
+            elif command -v apk >/dev/null 2>&1; then
+              apk add --no-cache build-base curl perl openssl-dev pkgconf;
+            fi
+          CIBW_BEFORE_BUILD_LINUX: >-
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable &&
+            source $HOME/.cargo/env
+          CIBW_ENVIRONMENT_LINUX: 'PATH="$HOME/.cargo/bin:$PATH" PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1'
+          CIBW_ENVIRONMENT_MACOS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 RUSTFLAGS="-C link-arg=-undefined -C link-arg=dynamic_lookup" MACOSX_DEPLOYMENT_TARGET=11.0'
+          CIBW_ENVIRONMENT_WINDOWS: 'PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 CFLAGS=/MD CXXFLAGS=/MD'
+          CIBW_TEST_COMMAND: 'python -c "from importlib.metadata import version; from pathlib import Path; import memori; from memori import _rust_core; _rust_core._ensure_onnxruntime_dylib(); ort_env = _rust_core.os.environ.get(\"ORT_DYLIB_PATH\"); assert ort_env, \"ORT_DYLIB_PATH missing after bootstrap\"; ort_path = Path(ort_env); assert ort_path.exists(), ort_path; import memori_python; print(version(\"memori\"))"'
+          # Linux wheel builds are covered here; full dynamic ONNX Runtime smoke
+          # tests remain skipped until musllinux has a compatible ORT runtime
+          # bootstrap.
+          CIBW_TEST_SKIP: "*-manylinux_x86_64 *-manylinux_aarch64 *-musllinux_x86_64 *-musllinux_aarch64"
+        with:
+          output-dir: wheelhouse
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-wheels-${{ matrix.os }}-${{ matrix.archs }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  build-memori-android-wheels:
+    needs: integration-tests
+    if: ${{ always() && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') }}
+    name: android wheels ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64_v8a
+            rust-target: aarch64-linux-android
+          - arch: x86_64
+            rust-target: x86_64-linux-android
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.2.12479018"
+
+      - name: Configure Android Rust linkers
+        run: |
+          set -euo pipefail
+          ndk_dir="${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}"
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            ndk_dir=""
+            if [ -d "$ANDROID_HOME/ndk" ]; then
+              ndk_dir="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+            fi
+          fi
+          if [ -z "$ndk_dir" ] || [ ! -d "$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin" ]; then
+            echo "Unable to locate Android NDK" >&2
+            exit 1
+          fi
+          echo "ANDROID_NDK_HOME=$ndk_dir" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$ndk_dir/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android24-clang" >> "$GITHUB_ENV"
+
+      - name: Build Android abi3 wheels
+        uses: pypa/cibuildwheel@v3.4.0
+        env:
+          CIBW_PLATFORM: android
+          CIBW_BUILD: "cp314-android_${{ matrix.arch }}"
+          CIBW_ARCHS_ANDROID: ${{ matrix.arch }}
+          ANDROID_API_LEVEL: "24"
+          CIBW_ENVIRONMENT_ANDROID: >-
+            PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1
+            CARGO_BUILD_TARGET=${{ matrix.rust-target }}
+            CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER"
+            CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER"
+          # Android pip cannot resolve all memori runtime dependencies as
+          # android-tagged wheels yet, so keep this job focused on wheel build.
+          CIBW_TEST_SKIP: "*-android_*"
+        with:
+          output-dir: wheelhouse
+
+      - name: Upload Android wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-wheels-android-${{ matrix.arch }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  build-memori-sdist:
+    needs: integration-tests
+    if: ${{ always() && (needs.integration-tests.result == 'success' || needs.integration-tests.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build tools
+        run: python -m pip install --upgrade pip build
+
+      - name: Build memori source distribution
+        run: python -m build --sdist --outdir dist
+
+      - name: Verify sdist contains core crate
+        run: |
+          python -c "
+          import tarfile, glob, sys
+          archives = glob.glob('dist/*.tar.gz')
+          assert archives, 'no sdist built'
+          with tarfile.open(archives[0]) as tf:
+              names = tf.getnames()
+          if not any('/core/Cargo.toml' in n for n in names):
+              sys.exit('sdist missing core/Cargo.toml')
+          if not any('/setup.py' in n for n in names):
+              sys.exit('sdist missing setup.py')
+          print('sdist looks good')
+          "
+
+      - name: Upload memori sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: memori-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish-memori:
+    needs: [build-memori-wheels, build-memori-android-wheels, build-memori-sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Download memori distributions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: memori-*
+          path: dist/memori
+          merge-multiple: true
+
+      - name: List built artifacts
+        run: ls -lh dist/memori
+
+      - name: Verify memori distribution
+        run: |
+          python -m pip install --upgrade pip twine
+          python -m twine check dist/memori/*
+
+      - name: Publish memori to PyPI
+        if: ${{ inputs.dry_run != true }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/memori/
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Dry-run summary
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          echo "::notice::Dry run complete. Artifacts validated with twine but not uploaded to PyPI."
+          echo "Download the memori-wheels-* and memori-sdist artifacts from this run to inspect."
+
+  deploy:
+    needs: [publish-memori]
+    if: ${{ inputs.dry_run != true && inputs.publish_memorisdk != false && github.event.release.prerelease != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install build tools
+        run: pip install --upgrade pip build twine toml
+
+      - name: Update package name to memorisdk
+        run: |
+          python -c "
+          import toml
+          with open('pyproject.toml', 'r') as f:
+              config = toml.load(f)
+          config['project']['name'] = 'memorisdk'
+          with open('pyproject.toml', 'w') as f:
+              toml.dump(config, f)
+          "
+
+      - name: Build memorisdk sdist
+        run: python -m build --sdist --outdir dist/memorisdk
+
+      - name: Verify memorisdk distribution
+        run: twine check dist/memorisdk/*
+
+      - name: Publish memorisdk to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/memorisdk/
+          user: __token__
+          password: ${{ secrets.PYPI_SDK_API_TOKEN }}

@@ -1,0 +1,263 @@
+---
+title: OpenAI
+description: Using Memori with OpenAI models including GPT-4o, GPT-4.1, and the Responses API with Memori BYODB.
+---
+
+# OpenAI
+
+Memori supports all OpenAI models and API styles. Register your client once and every call is automatically captured and stored.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Quick Start
+
+<CodeGroup title="OpenAI Integration">
+
+```python {{ title: 'Python' }}
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+});
+console.log(response.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+```
+
+</CodeGroup>
+
+## Supported Modes
+
+| Mode              | Python                                   | TypeScript                               |
+| ----------------- | ---------------------------------------- | ---------------------------------------- |
+| **Sync**          | `client.chat.completions.create()`       | —                                        |
+| **Async**         | `await client.chat.completions.create()` | `await client.chat.completions.create()` |
+| **Streamed**      | `stream=True` parameter                  | `stream: true` parameter                 |
+| **Responses API** | `client.responses.create()`              | —                                        |
+
+## Additional Modes
+
+### Async (Python)
+
+```python
+import asyncio
+from memori import Memori
+from openai import AsyncOpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = AsyncOpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+async def main():
+    response = await client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+### Streaming
+
+<CodeGroup title="Streaming">
+
+```python {{ title: 'Python' }}
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+stream = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const stream = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+
+await mem.augmentation.wait();
+```
+
+</CodeGroup>
+
+### Responses API (Python)
+
+```python
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.config.storage.build()
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+response = client.responses.create(
+    model="gpt-4.1-mini",
+    input="Hello!",
+    instructions="You are a helpful assistant."
+)
+print(response.output_text)
+```
+
+## Multi-Turn Conversations
+
+Memori captures each call and links them within the same session. Pass your full conversation history as usual.
+
+<CodeGroup title="Multi-Turn Conversations">
+
+```python {{ title: 'Python' }}
+from memori import Memori
+from openai import OpenAI
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine("sqlite:///memori.db")
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI()
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+
+messages = [{"role": "user", "content": "My name is Alice."}]
+response = client.chat.completions.create(model="gpt-4.1-mini", messages=messages)
+messages.append({"role": "assistant", "content": response.choices[0].message.content})
+
+messages.append({"role": "user", "content": "What's my name?"})
+response = client.chat.completions.create(model="gpt-4.1-mini", messages=messages)
+print(response.choices[0].message.content)
+```
+
+```typescript {{ title: 'TypeScript' }}
+import 'dotenv/config';
+import Database from 'better-sqlite3';
+import { OpenAI } from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+const client = new OpenAI();
+const db = new Database('memori.db');
+
+const mem = new Memori({ conn: () => db }).llm.register(client);
+mem.attribution('user-123', 'my-app');
+
+if (!mem.config.storage) {
+  throw new Error('Storage not initialized');
+}
+
+await mem.config.storage.build();
+
+const messages: OpenAI.ChatCompletionMessageParam[] = [
+  { role: 'user', content: 'My name is Alice.' },
+];
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages,
+});
+messages.push({
+  role: 'assistant',
+  content: response.choices[0]?.message?.content ?? '',
+});
+
+messages.push({ role: 'user', content: "What's my name?" });
+const response2 = await client.chat.completions.create({
+  model: 'gpt-4.1-mini',
+  messages,
+});
+console.log(response2.choices[0]?.message?.content);
+
+await mem.augmentation.wait();
+```
+
+</CodeGroup>

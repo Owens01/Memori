@@ -1,0 +1,144 @@
+r"""
+ __  __                           _
+|  \/  | ___ _ __ ___   ___  _ __(_)
+| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
+| |  | |  __/ | | | | | (_) | |  | |
+|_|  |_|\___|_| |_| |_|\___/|_|  |_|
+                  perfectam memoriam
+                       memorilabs.ai
+"""
+
+import types
+
+from memori.llm._constants import (
+    AGNO_ANTHROPIC_LLM_PROVIDER,
+    AGNO_FRAMEWORK_PROVIDER,
+    AGNO_GOOGLE_LLM_PROVIDER,
+    AGNO_OPENAI_LLM_PROVIDER,
+    AGNO_XAI_LLM_PROVIDER,
+    ANTHROPIC_LLM_PROVIDER,
+    GOOGLE_LLM_PROVIDER,
+    LANGCHAIN_CHATBEDROCK_LLM_PROVIDER,
+    LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER,
+    LANGCHAIN_CHATVERTEXAI_LLM_PROVIDER,
+    LANGCHAIN_FRAMEWORK_PROVIDER,
+    LANGCHAIN_OPENAI_LLM_PROVIDER,
+    OPENAI_LLM_PROVIDER,
+    XAI_LLM_PROVIDER,
+)
+
+
+def _client_module(client) -> str:
+    return str(type(client).__module__)
+
+
+def client_is_anthropic(client) -> bool:
+    return _client_module(client).startswith("anthropic")
+
+
+def client_is_google(client) -> bool:
+    return _client_module(client).startswith(
+        ("google.generativeai", "google.ai.generativelanguage", "google.genai")
+    )
+
+
+def client_is_openai(client) -> bool:
+    return _client_module(client).startswith("openai")
+
+
+def client_is_pydantic_ai(client) -> bool:
+    return _client_module(client).startswith("pydantic_ai")
+
+
+def client_is_xai(client) -> bool:
+    return "xai" in _client_module(client).lower()
+
+
+def client_is_litellm(client) -> bool:
+    """Match the LiteLLM module or a LiteLLM Router object.
+
+    Accepts two forms:
+      1. The ``litellm`` module itself (``memori.llm.register(litellm)``),
+         convenient for simple scripts.
+      2. A ``litellm.Router`` instance
+         (``memori.llm.register(litellm.Router(...))``), recommended for
+         app/server use because it avoids global module patching.
+
+    Both expose ``completion`` / ``acompletion`` and route through LiteLLM's
+    100+ provider backends.
+    """
+    if isinstance(client, types.ModuleType):
+        name = getattr(client, "__name__", "")
+        return name == "litellm" or name.startswith("litellm.")
+    return _client_module(client).startswith("litellm")
+
+
+def client_is_bedrock(provider, title):
+    return (
+        provider_is_langchain(provider) and title == LANGCHAIN_CHATBEDROCK_LLM_PROVIDER
+    )
+
+
+def llm_is_anthropic(provider, title):
+    return title == ANTHROPIC_LLM_PROVIDER
+
+
+def llm_is_bedrock(provider, title):
+    return (
+        provider_is_langchain(provider) and title == LANGCHAIN_CHATBEDROCK_LLM_PROVIDER
+    )
+
+
+def llm_is_google(provider, title):
+    return title == GOOGLE_LLM_PROVIDER or (
+        provider_is_langchain(provider)
+        and title
+        in [LANGCHAIN_CHATGOOGLEGENAI_LLM_PROVIDER, LANGCHAIN_CHATVERTEXAI_LLM_PROVIDER]
+    )
+
+
+def llm_is_openai(provider, title):
+    return (
+        title == OPENAI_LLM_PROVIDER
+        or title == "openai_responses"
+        or (provider_is_langchain(provider) and title == LANGCHAIN_OPENAI_LLM_PROVIDER)
+    )
+
+
+def llm_is_xai(provider, title):
+    return title == XAI_LLM_PROVIDER
+
+
+def llm_is_litellm(provider, title):
+    """LiteLLM normalizes every backing's response to OpenAI shape, so the
+    OpenAI adapter handles the parsed payload correctly. This matcher routes
+    `llm.provider == "litellm"` payloads through the existing OpenAI adapter
+    rather than duplicating the parser.
+    """
+    from memori.llm._constants import LITELLM_LLM_PROVIDER
+
+    return title == LITELLM_LLM_PROVIDER
+
+
+def agno_is_anthropic(provider, title):
+    return provider_is_agno(provider) and title == AGNO_ANTHROPIC_LLM_PROVIDER
+
+
+def agno_is_google(provider, title):
+    return provider_is_agno(provider) and title == AGNO_GOOGLE_LLM_PROVIDER
+
+
+def agno_is_openai(provider, title):
+    return provider_is_agno(provider) and title == AGNO_OPENAI_LLM_PROVIDER
+
+
+def agno_is_xai(provider, title):
+    return provider_is_agno(provider) and title == AGNO_XAI_LLM_PROVIDER
+
+
+def provider_is_agno(provider):
+    return provider == AGNO_FRAMEWORK_PROVIDER
+
+
+def provider_is_langchain(provider):
+    return provider == LANGCHAIN_FRAMEWORK_PROVIDER

@@ -1,0 +1,123 @@
+r"""
+ __  __                           _
+|  \/  | ___ _ __ ___   ___  _ __(_)
+| |\/| |/ _ \ '_ ` _ \ / _ \| '__| |
+| |  | |  __/ | | | | | (_) | |  | |
+|_|  |_|\___|_| |_| |_|\___/|_|  |_|
+                  perfectam memoriam
+                       memorilabs.ai
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from collections.abc import Awaitable
+from functools import partial
+from typing import Literal, overload
+
+from memori._embedding_input import (
+    is_embeddable_text,
+    normalize_embed_texts_input,
+)
+from memori.embeddings._tei import TEI
+from memori.embeddings._tei_embed import embed_texts_via_tei
+from memori.native import embed_texts as embed_texts_native
+
+logger = logging.getLogger(__name__)
+
+
+def _embed_texts(
+    texts: str | list[str],
+    model: str,
+    *,
+    tei: TEI | None = None,
+    tokenizer: object | None = None,
+    chunk_size: int = 128,
+) -> list[list[float]]:
+    originals = normalize_embed_texts_input(texts)
+    if not originals:
+        logger.debug("embed_texts called with empty input")
+        return []
+    if tei is not None:
+        return [
+            embed_texts_via_tei(
+                text=text,
+                model=model,
+                tei=tei,
+                tokenizer=tokenizer,
+                chunk_size=chunk_size,
+            )
+            if is_embeddable_text(text)
+            else []
+            for text in originals
+        ]
+
+    return embed_texts_native(originals, model=model)
+
+
+async def _embed_texts_async(
+    texts: str | list[str],
+    model: str,
+    *,
+    tei: TEI | None = None,
+    tokenizer: object | None = None,
+    chunk_size: int = 128,
+) -> list[list[float]]:
+    loop = asyncio.get_event_loop()
+    fn = partial(
+        _embed_texts,
+        texts,
+        model,
+        tei=tei,
+        tokenizer=tokenizer,
+        chunk_size=chunk_size,
+    )
+    return await loop.run_in_executor(None, fn)
+
+
+@overload
+def embed_texts(
+    texts: str | list[str],
+    model: str,
+    *,
+    async_: Literal[False] = False,
+    tei: TEI | None = None,
+    tokenizer: object | None = None,
+    chunk_size: int = 128,
+) -> list[list[float]]: ...
+
+
+@overload
+def embed_texts(
+    texts: str | list[str],
+    model: str,
+    *,
+    async_: Literal[True],
+    tei: TEI | None = None,
+    tokenizer: object | None = None,
+    chunk_size: int = 128,
+) -> Awaitable[list[list[float]]]: ...
+
+
+def embed_texts(
+    texts: str | list[str],
+    model: str,
+    *,
+    async_: bool = False,
+    tei: TEI | None = None,
+    tokenizer: object | None = None,
+    chunk_size: int = 128,
+) -> list[list[float]] | Awaitable[list[list[float]]]:
+    """
+    Embed text(s) into vectors.
+
+    When async_=True, returns an awaitable that runs the work in a threadpool.
+    """
+    if async_:
+        return _embed_texts_async(
+            texts, model, tei=tei, tokenizer=tokenizer, chunk_size=chunk_size
+        )
+    return _embed_texts(
+        texts, model, tei=tei, tokenizer=tokenizer, chunk_size=chunk_size
+    )

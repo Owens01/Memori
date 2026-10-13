@@ -1,0 +1,57 @@
+{
+  "id": "openclaw-memori",
+  "name": "Memori System",
+  "version": "0.0.13",
+  "description": "Hosted memory backend",
+  "kind": "memory",
+  "main": "dist/index.js",
+  "contracts": {
+    "tools": [
+      "memori_recall",
+      "memori_recall_summary",
+      "memori_compaction",
+      "memori_feedback",
+      "memori_signup",
+      "memori_quota"
+    ]
+  },
+  "uiHints": {
+    "apiKey": {
+      "label": "Memori API Key",
+      "sensitive": true,
+      "placeholder": "Enter your Memori API key...",
+      "help": "API key from memorilabs.ai (or use MEMORI_API_KEY env var)"
+    },
+    "entityId": {
+      "label": "Entity ID",
+      "placeholder": "e.g., your-app-user-id",
+      "help": "Required. The unique identifier to attribute these memories to."
+    },
+    "projectId": {
+      "label": "Project ID",
+      "placeholder": "e.g., my-project",
+      "help": "Required. Scopes all memories to this project."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "apiKey": {
+        "type": "string",
+        "title": "API Key",
+        "description": "Memori API Key"
+      },
+      "entityId": {
+        "type": "string",
+        "title": "Entity ID",
+        "description": "Required. The unique identifier to attribute these memories to."
+      },
+      "projectId": {
+        "type": "string",
+        "title": "Project ID",
+        "description": "Required. Scopes all memories to this project."
+      }
+    },
+    "required": []
+  }
+}

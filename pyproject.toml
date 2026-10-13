@@ -1,0 +1,192 @@
+[build-system]
+requires = ["setuptools>=60", "wheel", "setuptools-rust>=1.10.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memori"
+version = "3.3.6"
+description = "Memori Python SDK"
+authors = [{name = "Memori Labs Team", email = "noc@memorilabs.ai"}]
+license = {text = "Apache-2.0"}
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.10"
+keywords = ["ai", "memory", "agents", "llm", "artificial-intelligence", "multi-agent"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Database :: Database Engines/Servers",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "aiohttp>=3.13.2",
+    "botocore>=1.34.0",
+    "faiss-cpu>=1.7.0",
+    "grpcio>=1.60.0",
+    "numpy>=1.24.0",
+    "protobuf>=4.25.0,<6.0.0",
+    "pyfiglet>=0.8.0",
+    "requests>=2.32.5",
+]
+
+[project.optional-dependencies]
+# Kept as a no-op compatibility extra for `pip install memori[embeddings]`.
+# Embeddings are provided by the native Rust fastembed core in the default wheel.
+embeddings = []
+sqlalchemy = ["sqlalchemy>=2.0.44"]
+tidb-zero = ["certifi>=2024.0.0", "pymysql>=1.1.2"]
+cockroachdb = [
+    "psycopg[binary]>=3.1.0",
+    "sqlalchemy>=2.0.44",
+    "sqlalchemy-cockroachdb>=1.4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["memori*"]
+exclude = ["tests*", "docs*", "*.egg-info", "memori-ts*", "integrations*"]
+
+[tool.setuptools.package-data]
+memori = ["py.typed", "models/**/*"]
+
+[project.urls]
+Homepage = "https://memorilabs.ai"
+Documentation = "https://memorilabs.ai/docs/"
+Repository = "https://github.com/MemoriLabs/Memori"
+"Bug Tracker" = "https://github.com/MemoriLabs/Memori/issues"
+"Changelog" = "https://github.com/MemoriLabs/Memori/blob/main/CHANGELOG.md"
+"Contributing" = "https://github.com/MemoriLabs/Memori/blob/main/CONTRIBUTING.md"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"memori/storage/__init__.py" = ["I001"]  # Import order matters for adapter registration
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
+    "benchmark: marks tests as performance benchmarks",
+    "integration: marks tests as integration tests requiring external API keys",
+]
+asyncio_mode = "auto"
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--ignore=tests/benchmarks",
+    "--ignore=tests/integration",
+    "-m",
+    "not benchmark",
+    "--cov=memori",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::UserWarning:langsmith",
+]
+
+[tool.coverage.run]
+source = ["memori"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.ty.src]
+exclude = [
+    "benchmarks/**/*.ipynb",
+    "tests/**/*.py",
+    "integrations/hermes/tests/**/*.py",
+    "**/__pycache__/**",
+    "setup.py",
+]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+
+
+[dependency-groups]
+dev = [
+    "agno>=2.0.0",
+    "anthropic>=0.71.0",
+    "bandit>=1.8.0",
+    "google-genai>=1.46.0",
+    "langchain-community>=0.3.0",
+    "langchain-core>=1.0.1",
+    "langchain-google-genai>=3.0.0",
+    "langchain-google-vertexai>=2.0.0",
+    "langchain-openai>=1.0.1",
+    "litellm>=1.65.0",
+    "openai>=2.6.0",
+    "oracledb>=3.0.0",
+    "pip-audit>=2.8.0",
+    "pre-commit>=4.0.0",
+    "psycopg2-binary>=2.9.0",
+    "psycopg[binary]>=3.1.0",
+    "pymongo>=4.15.3",
+    "pymysql>=1.1.2",
+    "pytest>=8.4.2",
+    "pytest-asyncio>=0.24.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.15.1",
+    "psutil>=5.9.0",
+    "requests>=2.32.5",
+    "ruff>=0.8.0",
+    "sqlalchemy>=2.0.44",
+    "sqlalchemy-cockroachdb>=1.4.0",
+    "xai-sdk>=1.3.1",
+    "langchain-aws>=0.2.0",
+    "pyobvector>=0.2.1",
+]

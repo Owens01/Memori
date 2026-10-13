@@ -1,0 +1,223 @@
+---
+title: Client Setup
+description: Configure the Memori MCP server in Cursor, Claude Code, Codex, Warp, Antigravity, and other MCP clients with custom connectors.
+---
+
+# Client Setup
+
+Connect your IDE agent to the Memori MCP server. Each client uses a local MCP configuration with your API key and attribution headers.
+
+## Prerequisites
+
+- A Memori API key from [app.memorilabs.ai](https://app.memorilabs.ai)
+- An `entity_id` (identifies the end user) and optional `process_id` (identifies the agent or workflow)
+
+Set these as environment variables or replace the placeholders directly in the config:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key"
+export MEMORI_ENTITY_ID="user_123"
+export MEMORI_PROCESS_ID="my_agent" # optional
+```
+
+## Cursor
+
+Create `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${env:MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${env:MEMORI_ENTITY_ID}",
+        "X-Memori-Process-Id": "${env:MEMORI_PROCESS_ID}"
+      }
+    }
+  }
+}
+```
+
+Restart Cursor after saving the file.
+
+### Project-Scoped Attribution (Recommended)
+
+When working across multiple repositories, derive both attribution headers from the active workspace to avoid mixing memories across projects:
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${env:MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${workspaceFolderBasename}",
+        "X-Memori-Process-Id": "${workspaceFolderBasename}"
+      }
+    }
+  }
+}
+```
+
+If your MCP client does not support workspace placeholders, set equivalent values with environment variables before launching the client.
+
+**Same value vs. different values.** Use the **same** value for `X-Memori-Entity-Id` and `X-Memori-Process-Id` when each project has a single agent and you want one isolated memory scope per project (the common case for the snippet above). Use **different** values when several agents share one entity but each agent needs its own isolated conversation history: keep `X-Memori-Entity-Id` as a stable user/team identifier (for example `user_123` or `${env:MEMORI_ENTITY_ID}`) and let `X-Memori-Process-Id` vary per workspace, agent, or integration (for example `${workspaceFolderBasename}` or `cursor-web-app`).
+
+## Claude Code
+
+You can configure via the CLI or a `.mcp.json` file.
+
+### CLI
+
+```bash
+claude mcp add --transport http memori https://api.memorilabs.ai/mcp/ \
+  --header "X-Memori-API-Key: ${MEMORI_API_KEY}" \
+  --header "X-Memori-Entity-Id: ${MEMORI_ENTITY_ID}" \
+  --header "X-Memori-Process-Id: ${MEMORI_PROCESS_ID}"
+```
+
+### Project Config
+
+Create `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "type": "http",
+      "url": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "${MEMORI_API_KEY}",
+        "X-Memori-Entity-Id": "${MEMORI_ENTITY_ID}",
+        "X-Memori-Process-Id": "${MEMORI_PROCESS_ID}"
+      }
+    }
+  }
+}
+```
+
+Run `/mcp` inside Claude Code to verify the server status.
+
+## OpenAI Codex
+
+Codex reads MCP server configuration from `~/.codex/config.toml`. Add this:
+
+```toml
+[mcp_servers.memori]
+enabled = true
+url = "https://api.memorilabs.ai/mcp/"
+
+[mcp_servers.memori.http_headers]
+X-Memori-API-Key = "${MEMORI_API_KEY}"
+X-Memori-Entity-Id = "${MEMORI_ENTITY_ID}"
+X-Memori-Process-Id = "${MEMORI_PROCESS_ID}"
+```
+
+`X-Memori-Process-Id` is optional.
+
+You can also add the server from the Codex UI: **Settings > Settings > MCP Servers > + Add Server**.
+
+## Warp
+
+Warp cloud agents support MCP JSON config with remote URLs. Add the Memori server to your Warp MCP configuration:
+
+```json
+{
+  "memori": {
+    "serverUrl": "https://api.memorilabs.ai/mcp/",
+    "headers": {
+      "X-Memori-API-Key": "your-memori-api-key",
+      "X-Memori-Entity-Id": "user_123",
+      "X-Memori-Process-Id": "my_agent"
+    }
+  }
+}
+```
+
+`X-Memori-Process-Id` is optional.
+
+## Antigravity
+
+Open **Manage MCP Servers** and edit `mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "memori": {
+      "serverUrl": "https://api.memorilabs.ai/mcp/",
+      "headers": {
+        "X-Memori-API-Key": "your-memori-api-key",
+        "X-Memori-Entity-Id": "user_123",
+        "X-Memori-Process-Id": "my_agent"
+      }
+    }
+  }
+}
+```
+
+Save and restart Antigravity so the tool list refreshes.
+
+## LangChain
+
+Set headers dynamically based on the current user session:
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "memori": {
+        "transport": "streamable_http",
+        "url": "https://api.memorilabs.ai/mcp/",
+        "headers": {
+            "X-Memori-API-Key": "your-memori-api-key",
+            "X-Memori-Entity-Id": "user_123",
+            "X-Memori-Process-Id": "langchain_agent"
+        }
+    }
+})
+
+# Load the tools to be used by your LangChain agent
+tools = await client.get_tools()
+```
+
+## Slack
+
+Set headers dynamically per request using the Slack user ID from the event payload:
+
+```ts
+const memoriHeaders = {
+  "X-Memori-API-Key": process.env.MEMORI_API_KEY,
+  "X-Memori-Entity-Id": slackEvent.user,         // e.g. "U04ABCDEF"
+  "X-Memori-Process-Id": "supportbot",
+};
+```
+
+Pass these headers in every MCP tool call. `session_id` is derived automatically from `entity_id` and the current UTC hour.
+Use `process_id` to isolate memories by integration or workspace so preferences from a personal workspace don't bleed into a team workspace.
+
+## Notion
+
+Set the entity and process IDs from the Notion API user object:
+
+```ts
+const memoriHeaders = {
+  "X-Memori-API-Key": process.env.MEMORI_API_KEY,
+  "X-Memori-Entity-Id": notionUser.id,              // e.g. "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  "X-Memori-Process-Id": "notion_writing_assistant",
+};
+```
+
+Pass these headers in every MCP tool call. `session_id` is derived automatically from `entity_id` and the current UTC hour.
+Use `process_id` to isolate memories by integration or workspace so preferences from a personal workspace don't bleed into a team workspace.
+
+## Verifying the Connection
+
+After configuring any client:
+
+1. Confirm the MCP server shows as **connected** in your client's UI
+2. Check that `memori_recall`, `memori_recall_summary`, `memori_compaction`, and `memori_advanced_augmentation` appear in the tools list
+3. Send a test message — `memori_recall` should return a response (even if empty for new entities)
+4. Verify `memori_advanced_augmentation` accepts a durable user/assistant turn
+
+If you receive 401 errors, double-check your `X-Memori-API-Key` value. See [Troubleshooting](/docs/memori-cloud/support/troubleshooting) for more help.

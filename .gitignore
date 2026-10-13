@@ -1,0 +1,125 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+*.so
+*.egg
+*.egg-info
+dist/
+/build/
+*.swp
+
+# Testing
+.pytest_cache
+.coverage
+coverage.xml
+htmlcov/
+.tox
+
+# IDEs
+.DS_Store
+.idea
+.vscode
+*.swo
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Environment variables
+.env
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Python packaging
+*.egg-info/
+dist/
+/build/
+
+# Sensitive files (do not commit)
+google-credentials.json
+*.pem
+*.key
+
+AGENTS.md
+.codex/skills/
+tests/examples/*
+
+# Benchmarking results
+tests/benchmarks/results/
+indexes_gemma/
+results/
+*.json
+*.csv
+!pyproject.toml
+!package.json
+!composer.json
+
+# Node / TypeScript
+node_modules/
+dist/  uv sync --dev
+  shell: /usr/bin/bash -e {0}
+  env:
+    UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+    UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+Using CPython 3.11.15
+Creating virtual environment at: .venv
+Resolved 230 packages in 771ms
+error: Distribution `yarl==1.24.0 @ registry+https://pypi.org/simple` can't be installed because it doesn't have a source distribution or wheel for the current platform
+
+hint: You're using CPython 3.11 (`cp311`), but `yarl` (v1.24.0) only has wheels with the following Python ABI tag: `cp310`
+Error: Process completed with exit code 2.
+*.tsbuildinfo
+coverage
+!package-lock.json
+!tsconfig.json
+!tsconfig.build.json
+!.prettierrc.json
+!openclaw.plugin.json
+docs/memori-cloud/mcp/use-cases.mdx
+# Keep lightweight TS-native bridge sources in repo; ignore only compiled *.node
+
+# Rust / native build artifacts
+target/
+core/target/
+*.dylib
+*.dll
+*.node
+*.pdb
+*.dSYM/
+*.rlib
+*.rmeta
+
+# Local runtime artifacts
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+.fastembed_cache/
+.benchmarks/
+.uv-cache/
+.venv-size-check/
+memori.db*
+memori_rust_core.db*
+memori_test.db*
+memori_python.abi3.so
+memori.egg-info/
+
+*.cache/
+
+# NAPI compiled native bindings and generated wrappers
+*.node
+src/native/index.js
+src/native/index.d.ts
+!memori-ts/src/native/
+!memori-ts/src/native/index.js
+!memori-ts/src/native/index.d.ts
+!memori-ts/src/native/package.json
+core/bindings/node/index.d.ts
+core/bindings/node/index.js

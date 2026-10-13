@@ -1,0 +1,165 @@
+---
+title: Development Setup
+description: Set up your local development environment for contributing to the Memori open-source project.
+---
+
+# Development Setup
+
+This guide walks you through setting up a local development environment for working on the Memori codebase. Follow these steps to clone the repository, install dependencies, and run the test suite.
+
+<Note>
+  Want a zero-setup option? The Memori Cloud at
+  [app.memorilabs.ai](https://app.memorilabs.ai).
+</Note>
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your system:
+
+- **git** — For cloning the repository and managing branches.
+
+**Python:**
+- **Python 3.10 or higher** — Check your version with `python --version`.
+- **pip** — Python's package manager (usually included with Python).
+
+**TypeScript:**
+- **Node.js 20 or higher** — Check your version with `node --version`.
+
+## Clone the Repository
+
+Start by forking the repository on GitHub, then clone your fork locally:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/Memori.git
+cd Memori
+```
+
+If you plan to submit a pull request, make sure to keep your fork synced with the upstream repository:
+
+```bash
+git remote add upstream https://github.com/MemoriLabs/Memori.git
+git fetch upstream
+```
+
+## Install Dependencies
+
+<CodeGroup title="Install Dependencies">
+
+```bash {{ title: 'Python' }}
+# Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate    # macOS/Linux
+# .venv\Scripts\activate     # Windows
+
+# Install with development dependencies
+pip install -e ".[dev]"
+```
+
+```bash {{ title: 'TypeScript' }}
+cd memori-ts
+npm install
+```
+
+</CodeGroup>
+
+The Python `-e` flag installs Memori in editable mode so changes to the source code are immediately reflected without reinstalling. The `[dev]` extra includes testing and linting tools.
+
+## Running Tests
+
+<CodeGroup title="Run Tests">
+
+```bash {{ title: 'Python' }}
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run a specific test file
+pytest tests/test_config.py
+
+# Run with coverage
+pytest --cov=memori --cov-report=term-missing
+```
+
+```bash {{ title: 'TypeScript' }}
+npm test
+```
+
+</CodeGroup>
+
+## Local Development Workflow
+
+Here is a typical workflow for making changes to Memori:
+
+1. **Create a branch** for your feature or fix:
+
+   ```bash
+   git checkout -b feat/my-new-feature
+   ```
+
+2. **Make your changes** — Edit the source code in the `memori/` directory (Python) or `memori-ts/src/` directory (TypeScript).
+
+3. **Write tests** — Add or update tests in the `tests/` directory (Python) or `memori-ts/` (TypeScript) to cover your changes.
+
+4. **Run the tests** to make sure nothing is broken:
+
+   <CodeGroup title="Run Tests">
+
+   ```bash {{ title: 'Python' }}
+   pytest
+   ```
+
+   ```bash {{ title: 'TypeScript' }}
+   npm test
+   ```
+
+   </CodeGroup>
+
+5. **Check code style:**
+
+   <CodeGroup title="Code Style">
+
+   ```bash {{ title: 'Python' }}
+   # Lint
+   ruff check .
+
+   # Format
+   ruff format --check .
+   ```
+
+   ```bash {{ title: 'TypeScript' }}
+   # Lint
+   npm run lint
+
+   # Type check
+   npm run typecheck
+   ```
+
+   </CodeGroup>
+
+6. **Commit your changes** with a descriptive message:
+
+   ```bash
+   git add .
+   git commit -m "feat: add support for Redis storage backend"
+   ```
+
+7. **Push to your fork** and open a pull request:
+   ```bash
+   git push origin feat/my-new-feature
+   ```
+
+## Project Structure
+
+Here is a high-level overview of the Memori repository structure:
+
+| Directory    | Purpose                                   |
+| ------------ | ----------------------------------------- |
+| `memori/`    | Python library source code                |
+| `memori-ts/` | TypeScript library source code            |
+| `tests/`     | Python test suite (pytest)                |
+| `docs/`      | Documentation source files                |
+| `examples/`  | Example scripts and usage demos           |
+
+The core integration logic for each LLM provider lives in separate modules within `memori/` (Python) and `memori-ts/src/` (TypeScript). When adding support for a new provider, look at existing integrations (such as OpenAI or Anthropic) as templates.

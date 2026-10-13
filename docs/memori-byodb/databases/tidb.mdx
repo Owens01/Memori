@@ -1,0 +1,145 @@
+---
+title: TiDB
+description: Set up Memori with TiDB or TiDB Cloud — distributed SQL with MySQL compatibility and a drop-in BYODB path.
+---
+
+# TiDB
+
+TiDB speaks the MySQL wire protocol, so Memori integrates with it through the
+same SQLAlchemy / PyMySQL path as MySQL. Memori auto-detects TiDB from
+`SELECT VERSION()` and routes it through a dedicated TiDB integration path
+that reuses the MySQL storage family.
+
+## Install
+
+<CodeGroup title="Install TiDB Driver">
+
+```bash {{ title: 'PyMySQL (Recommended)' }}
+pip install memori pymysql sqlalchemy certifi
+```
+
+```bash {{ title: 'mysqlclient' }}
+pip install memori mysqlclient sqlalchemy
+```
+
+</CodeGroup>
+
+## Quick Start
+
+<CodeGroup title="TiDB Connection">
+
+```python {{ title: 'TiDB / TiDB Cloud' }}
+from memori import Memori
+import certifi
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+engine = create_engine(
+    "mysql+pymysql://user:password@host:4000/memori_db?charset=utf8mb4",
+    connect_args={"ssl": {"ca": certifi.where()}},
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
+SessionLocal = sessionmaker(bind=engine)
+
+mem = Memori(conn=SessionLocal)
+mem.config.storage.build()
+```
+
+</CodeGroup>
+
+## TiDB Cloud Zero Provisioning
+
+For disposable development databases, Memori can provision a TiDB Cloud Zero
+instance and then use the existing TiDB/MySQL BYODB path:
+
+```bash
+pip install "memori[tidb-zero]"
+```
+
+```python
+from memori import Memori
+
+mem = Memori.provision(provider="tidb-zero", build=True)
+```
+
+You can also use the CLI:
+
+```bash
+python -m memori provision tidb-zero
+python -m memori provision --provider tidb-zero
+```
+
+The provider defaults to `https://zero.tidbapi.com/v1beta1/instances`. You can
+override it with `MEMORI_TIDB_ZERO_URL` if TiDB changes the preview endpoint,
+and pass `TIDB_ZERO_API_KEY` if bearer authentication is required.
+
+<Note>
+  Provisioned results are cached in
+  `$MEMORI_HOME/.memori/provisioning.json` or `~/.memori/provisioning.json`.
+  This file contains the full database DSN, including credentials. Memori writes
+  it with owner-only permissions where supported, but you should treat it as a
+  secrets file and rotate or delete it when the database is no longer needed.
+  If you switch TiDB Zero endpoints, accounts, or projects on the same machine,
+  pass a distinct `tag` / `cache_key` or set `cache=False` so Memori does not
+  reuse a cached development database from another context.
+</Note>
+
+## Connection Strings
+
+| Environment        | Connection String                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------- |
+| **Local / Self-hosted** | `mysql+pymysql://user:pass@host:4000/memori_db?charset=utf8mb4`               |
+| **TiDB Cloud**     | `mysql+pymysql://user:pass@gateway.example.tidbcloud.com:4000/memori_db?charset=utf8mb4` |
+| **With TLS params** | `mysql+pymysql://user:pass@host:4000/memori_db?charset=utf8mb4&ssl_verify_cert=true` |
+
+Use the connection string provided by your TiDB deployment or TiDB Cloud
+instance. For TiDB Cloud Serverless with SQLAlchemy + PyMySQL, pass TLS through
+`connect_args={"ssl": {"ca": certifi.where()}}` so the driver uses a trusted
+CA bundle. Memori does not require a separate adapter.
+
+## Complete Example
+
+```python
+import os
+import certifi
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from memori import Memori
+from openai import OpenAI
+
+engine = create_engine(
+    os.getenv("DATABASE_CONNECTION_STRING"),
+    connect_args={"ssl": {"ca": certifi.where()}} if os.getenv("DATABASE_USE_TLS") else {},
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
+SessionLocal = sessionmaker(bind=engine)
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+mem = Memori(conn=SessionLocal).llm.register(client)
+mem.attribution(entity_id="user_123", process_id="my_agent")
+mem.config.storage.build()
+
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "I work on distributed systems."}]
+)
+print(response.choices[0].message.content)
+
+mem.augmentation.wait()
+facts = mem.recall("distributed systems")
+print(facts)
+```
+
+## Why TiDB?
+
+- **MySQL compatibility**: Works with the same client stack most Python apps already use.
+- **Distributed SQL**: Good match for multi-tenant memory services that need horizontal growth.
+- **Operational simplicity**: Easy path from local prototyping to TiDB Cloud without changing Memori code.
+
+## Notes
+
+- TiDB currently follows the same Memori storage family as MySQL. This keeps the integration low-risk and smooth for other MySQL-compatible systems.
+- TiDB Cloud Serverless requires secure transport. With SQLAlchemy + PyMySQL, the simplest working setup is `certifi` plus `connect_args={"ssl": {"ca": certifi.where()}}`.
+- If you later want TiDB-specific optimizations, such as native vector support, those can be layered in separately without changing the basic BYODB path.

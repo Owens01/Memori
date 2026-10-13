@@ -1,0 +1,94 @@
+---
+title: Troubleshooting
+description: Common issues and solutions when using Memori Cloud.
+---
+
+# Troubleshooting
+
+Quick fixes for the most common Memori issues.
+
+## Installation
+
+### Python
+
+**If `pip install memori` fails** — Requires Python 3.10+.
+Run `python --version` to check, then `pip install --upgrade pip && pip install memori`.
+
+### TypeScript
+
+**If `npm install @memorilabs/memori` fails** — Requires Node.js 20+.
+Run `node --version` to check, then update Node.js and retry.
+
+**Module resolution errors** — Ensure your `tsconfig.json` uses `"moduleResolution": "node"` or `"bundler"`. The SDK ships ESM with TypeScript declarations.
+
+## API Key Issues
+
+**Invalid or missing API key** — Set the `MEMORI_API_KEY` environment variable:
+
+```bash
+export MEMORI_API_KEY="your-memori-api-key"
+```
+
+**Quota exceeded** — Upgrade your account at [app.memorilabs.ai/settings/billing](https://app.memorilabs.ai/settings/billing).
+
+## No Memories Being Created
+
+1. **Register your LLM client** — conversations aren't captured without registration:
+
+<CodeGroup title="Register Client">
+
+```python {{ title: 'Python' }}
+client = OpenAI()
+mem = Memori().llm.register(client)
+```
+
+```typescript {{ title: 'TypeScript' }}
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+```
+
+</CodeGroup>
+
+2. **Set attribution** before LLM calls — without it, no memories are stored:
+
+<CodeGroup title="Set Attribution">
+
+```python {{ title: 'Python' }}
+mem.attribution(entity_id="user_123", process_id="my_app")
+```
+
+```typescript {{ title: 'TypeScript' }}
+mem.attribution('user_123', 'my_app');
+```
+
+</CodeGroup>
+
+## Recall Returns Empty
+
+- Verify `entity_id` matches what was used when memories were created
+- Increase limit: `mem.recall("query", limit=10)`
+- Lower threshold: `mem.config.recall_relevance_threshold = 0.05`
+
+## Performance
+
+**Network timeouts** — Increase timeout: `mem.config.request_secs_timeout = 10` and retries: `mem.config.request_num_backoff = 10`.
+
+## Debug Logging
+
+Enable debug logging to inspect request flow, attribution, and augmentation behavior when troubleshooting missing memories or API errors. Use it temporarily in development, since logs can include sensitive request metadata.
+
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s | %(name)s | %(levelname)s | %(message)s")
+
+from memori import Memori
+mem = Memori()
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/MemoriLabs/Memori/issues)
+- [Discord](https://discord.gg/abD4eGym6v)
+- [Examples](https://github.com/MemoriLabs/Memori/tree/main/examples)
+
+Include your language, runtime version (Python/Node.js), Memori version (`pip show memori` or check `package.json`), and full error trace.

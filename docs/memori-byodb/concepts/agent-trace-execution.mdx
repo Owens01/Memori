@@ -1,0 +1,45 @@
+---
+title: Agent Trace & Execution
+description: How Memori captures tool calls, decisions, workflow steps, and outcomes to build persistent memory from agent execution history.
+---
+
+# Agent Trace & Execution
+
+Memori doesn't just extract memory from conversations, it can learn from agent execution itself. By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, Memori turns raw execution history into structured memory primitives that agents can recall and reuse across sessions.
+
+This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
+
+## What It Does
+
+As your agent works, Memori captures the full conversation including tool calls, decisions, and outcomes. Advanced Augmentation then extracts structured facts, preferences, and attributes in the background.
+
+### Dual memory model
+
+Memori stores execution knowledge in two complementary forms:
+
+- **Structured memory primitives** — precise, queryable records of facts, decisions, constraints, actions, tool results, and outcomes used for targeted retrieval and reasoning
+- **Rolling summaries** — continuously updated context used for grounding and situational awareness
+
+### Grounded in agent execution, not just text
+
+Memori incorporates tool calls and execution traces alongside conversation data. This means memory reflects not just what was discussed, but what the agent actually did and what results those actions produced.
+
+By structuring memory from actions, tool results, decisions, and outcomes, the system gives the agent a fuller understanding of prior task execution so the next time it acts, it can be more accurate and efficient.
+
+## Context Recall
+
+When a query is sent to an LLM through a wrapped client, Memori automatically includes relevant execution history:
+
+1. Intercepts the outbound LLM call
+2. Uses semantic search to find execution facts matching the query
+3. Ranks facts by vector similarity
+4. Injects the most relevant execution context into the system prompt
+5. Forwards the enriched request to the LLM provider
+
+## When to Use It
+
+- Agentic workflows that call external tools or APIs
+- Multi-step pipelines where outcomes should inform future runs
+- Use cases where agent behavior should improve over time
+- Debugging and auditing agent decisions across sessions
+- Building relationships between actions, tools, and outcomes

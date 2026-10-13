@@ -1,0 +1,118 @@
+---
+title: Introduction
+description: Memori gives your AI agents structured, persistent memory — no database setup required.
+---
+
+# What is Memori?
+
+__Memori__ is a memory layer for LLM applications, agents, and copilots. It continuously captures interactions, extracts structured knowledge, and intelligently ranks, decays, and retrieves the relevant memories. So your AI remembers the right things at the right time across every session.
+
+Memori uses [Advanced Augmentation](/docs/memori-cloud/concepts/advanced-augmentation) to turn raw conversations into structured, searchable memories.
+
+By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, [Agent Trace & Execution](/docs/memori-cloud/concepts/agent-trace-execution) turns raw execution history into structured memory primitives that agents can recall and reuse across sessions. This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
+
+It runs asynchronously in the background to minimize impact on your response path.
+
+## Why Memori Cloud?
+
+With the Memori Cloud platform: [app.memorilabs.ai](https://app.memorilabs.ai), you skip all database configuration. Sign up, get a Memori API key, and start building AI agents with memory in minutes.
+
+### LLM Provider & Framework Support
+
+OpenAI, Anthropic, Gemini, and Grok (xAI) via direct SDK wrappers. Bedrock is
+supported via LangChain `ChatBedrock`. OpenAI-compatible providers (Nebius,
+Deepseek, NVIDIA NIM, Azure OpenAI, and more) work through OpenAI's `base_url`
+parameter. Supports sync, async, streamed, and unstreamed modes, plus LangChain
+, Agno, and Pydantic AI.
+
+### Zero Configuration
+
+No database setup needed. Connect your LLM client with an API key and start
+building memories immediately.
+
+### Framework Integration
+
+Native support for LangChain, Agno, and Pydantic AI with seamless integration
+into your existing workflows.
+
+### Agent Trace & Execution
+
+Memori doesn't just extract memory from conversations — it can learn from agent execution itself. By capturing tool calls, decisions, workflow steps, outcomes, and other trace events, Memori turns raw execution history into structured memory primitives that agents can recall and reuse across sessions. This allows agents to remember not only what users said, but what actually happened: which tools were used, which paths succeeded or failed, what preferences emerged through action, and what context should shape future decisions.
+
+### Advanced Augmentation
+
+Background AI processing extracts facts, preferences, and relationships from
+your conversations automatically.
+
+### Intelligent Recall
+
+Intelligent Recall surfaces the right memories at the right time. Memories are
+ranked by relevance and importance, with intelligent decay so older or less
+relevant facts recede — so your AI stays contextually aware without clutter.
+Use manual recall when you need to display memories in your UI, build custom
+prompts, or debug. See [How Memori
+Works](/docs/memori-cloud/concepts/how-memory-works#how-recall-works) for
+automatic vs manual recall and tuning.
+
+<CodeGroup title="Quick Start">
+
+```python {{ title: 'Python' }}
+from memori import Memori
+from openai import OpenAI
+
+# Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+client = OpenAI()
+mem = Memori().llm.register(client)
+
+# Track conversations by user and process
+mem.attribution(entity_id="user_123", process_id="support_agent")
+
+# All conversations automatically persisted and recalled
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My favorite color is blue."}]
+)
+```
+
+```typescript {{ title: 'TypeScript' }}
+import OpenAI from 'openai';
+import { Memori } from '@memorilabs/memori';
+
+// Requires MEMORI_API_KEY and OPENAI_API_KEY in your environment
+const client = new OpenAI();
+const mem = new Memori().llm.register(client);
+
+// Track conversations by user and process
+mem.attribution('user_123', 'support_agent');
+
+// All conversations automatically persisted and recalled
+const response = await client.chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [{ role: 'user', content: 'My favorite color is blue.' }],
+});
+```
+
+</CodeGroup>
+
+## Core Concepts
+
+| Concept          | Description                                           | Example                                  |
+| ---------------- | ----------------------------------------------------- | ---------------------------------------- |
+| **Entity**       | Person, place, or thing (like a user)                 | `entity_id="user_123"`                   |
+| **Process**      | Your agent, LLM interaction, or program               | `process_id="support_agent"`             |
+| **Session**      | Groups LLM interactions together                      | Auto-generated UUID, manually manageable |
+| **Augmentation** | Background AI enhancement of memories                 | Auto-runs after wrapped LLM calls        |
+| **Agent trace & execution** | Memory extracted from tool calls, decisions, and workflow outcomes | Captured from agent execution history |
+| **Recall**       | Retrieve relevant memories from previous interactions | Auto-injects recalled memories           |
+
+## Architecture Overview
+
+The diagram has three lanes: your app, the Memori SDK, and Memori Cloud. Your app calls the LLM normally, Memori captures context on the response path, and memory processing continues in the background.
+
+Synchronous capture: conversation messages are sent to Memori Cloud while your normal LLM flow continues.
+
+Recall injection: relevant memories are fetched from managed storage and injected into later prompts.
+
+Async augmentation: Memori Cloud extracts facts, preferences, rules, events, and relationships from conversations without blocking your app.
+
+!["Memori Cloud architecture"](https://images.memorilabs.ai/docs/memori-cloud-architecture-detail.webp)
